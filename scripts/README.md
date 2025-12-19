@@ -16,7 +16,7 @@ This directory contains shell scripts for automated security hardening and confi
 | `setup-secrets-manager.sh` | AWS Secrets retrieval | ~20 sec | AWS Secrets Manager Integration |
 | `verify-security.sh` | Security validation | ~1 min | System Security Hardening |
 
----
+----
 
 ## 🔧 Script Details
 
