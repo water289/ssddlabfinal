@@ -200,9 +200,6 @@ pipeline {
     stage('Build & Publish Reports') {
       steps {
         echo '=== PHASE 4B: Build Docker Images & Publish All Reports ==='
-    stage('Build & Publish Reports') {
-      steps {
-        echo '=== PHASE 4B: Build Docker Images & Publish All Reports ==='
         
         // Build Docker Images
         echo 'Building Docker Images'
