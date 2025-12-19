@@ -481,17 +481,6 @@ pipeline {
       }
     }
 
-    stage('Docker Push to DockerHub') {
-      steps {
-        echo 'Pushing Docker Image to DockerHub'
-        sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
-        sh 'docker push ${BACKEND_IMAGE}:latest'
-        sh 'docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}'
-        sh 'docker push ${FRONTEND_IMAGE}:latest'
-        sh 'docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}'
-      }
-    }
-
     stage('Kubernetes Deployment') {
       when { expression { return params.DEPLOY_TO_K8S } }
       steps {
