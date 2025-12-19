@@ -477,6 +477,7 @@ pipeline {
             echo "✓ Gatekeeper policies applied"
           '''
         }
+        sh '''
           trivy image --severity HIGH,CRITICAL ${BACKEND_IMAGE}:${BUILD_NUMBER} || echo "Trivy scan completed"
           trivy image --severity HIGH,CRITICAL ${FRONTEND_IMAGE}:${BUILD_NUMBER} || echo "Trivy scan completed"
         '''
