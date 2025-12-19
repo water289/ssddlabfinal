@@ -1,0 +1,42 @@
+name: Frontend CI
+
+on:
+  push:
+    paths:
+      - 'src/frontend/**'
+  pull_request:
+    paths:
+      - 'src/frontend/**'
+
+jobs:
+  build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: src/frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: src/frontend
+        run: npm run build
+
+      - name: Build frontend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/frontend
+          push: false
+          tags: secure-voting-frontend:ci
+
+      - name: Scan frontend image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: secure-voting-frontend:ci
+          format: 'table'
+          severity: 'CRITICAL,HIGH'

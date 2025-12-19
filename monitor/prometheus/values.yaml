@@ -1,0 +1,35 @@
+prometheus:
+  serviceMonitor:
+    enabled: false
+
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      receiver: 'email-notifications'
+
+serverFiles:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'secure-voting-backend'
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['voting-backend:8000']
+  
+  alerts.yml: |
+    groups:
+      - name: voting_backend_alerts
+        interval: 30s
+        rules:
+          - alert: BackendDown
+            expr: up{job="secure-voting-backend"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Backend service is down"

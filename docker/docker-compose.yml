@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: voting
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - voting-net
+  backend:
+    build:
+      context: ../src/backend
+      dockerfile: Dockerfile
+    env_file:
+      - ../src/backend/.env.example
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/voting
+      SECRET_KEY: change-me-to-a-secure-random-string
+      FRONTEND_ORIGINS: http://localhost:5173,http://frontend:80
+    ports:
+      - '8000:8000'
+    depends_on:
+      - db
+    networks:
+      - voting-net
+  frontend:
+    build:
+      context: ../src/frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://backend:8000
+    ports:
+      - '5173:80'
+    depends_on:
+      - backend
+    networks:
+      - voting-net
+
+volumes:
+  db-data:
+
+networks:
+  voting-net:
+    driver: bridge

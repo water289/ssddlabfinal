@@ -1,0 +1,21 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "voting-system.fullname" . }}-backend-hpa
+  labels:
+    app: {{ include "voting-system.name" . }}
+    component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "voting-system.fullname" . }}-backend
+  minReplicas: {{ .Values.backend.replicaCount }}
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

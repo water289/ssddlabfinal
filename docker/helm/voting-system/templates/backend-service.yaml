@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "voting-system.fullname" . }}-backend
+  labels:
+    app: {{ include "voting-system.name" . }}
+    component: backend
+spec:
+  selector:
+    app: {{ include "voting-system.name" . }}
+    component: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  type: {{ .Values.service.type }}

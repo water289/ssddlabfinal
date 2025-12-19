@@ -1,0 +1,51 @@
+global:
+  imagePullSecrets: []
+  secretKey: "change-me"
+  database:
+    host: "voting-postgres"
+    user: "postgres"
+    password: "postgres"
+    name: "voting"
+    port: 5432
+  frontendOrigins: "http://localhost:5173"
+  voteEncryptionKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+backend:
+  image: "secure-voting-backend:latest"
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  rateLimit:
+    enabled: true
+    perMinute: 120
+
+frontend:
+  image: "secure-voting-frontend:latest"
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  apiUrl: "http://voting-backend:8000"
+
+postgres:
+  image: "postgres:15-alpine"
+  storage: 2Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+service:
+  type: ClusterIP

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: voting-frontend
+  labels:
+    app: secure-voting
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: secure-voting
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: secure-voting
+        component: frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+        - name: frontend
+          image: secure-voting-frontend:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: VITE_API_URL
+              value: "http://voting-backend:8000"
+          ports:
+            - containerPort: 80
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+      nodeSelector: {}
+      tolerations: []
+      affinity: {}

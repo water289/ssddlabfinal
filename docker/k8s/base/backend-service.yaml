@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: voting-backend
+  labels:
+    app: secure-voting
+    component: backend
+spec:
+  selector:
+    app: secure-voting
+    component: backend
+  ports:
+    - port: 8000
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  type: ClusterIP

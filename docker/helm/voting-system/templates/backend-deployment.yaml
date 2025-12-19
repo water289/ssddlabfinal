@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "voting-system.fullname" . }}-backend
+  labels:
+    app: {{ include "voting-system.name" . }}
+    component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "voting-system.name" . }}
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: {{ include "voting-system.name" . }}
+        component: backend
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: backend
+          image: {{ .Values.backend.image }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.global.database.user }}:{{ .Values.global.database.password }}@{{ .Values.global.database.host }}:{{ .Values.global.database.port }}/{{ .Values.global.database.name }}"
+            - name: SECRET_KEY
+              value: {{ .Values.global.secretKey | quote }}
+            - name: VOTE_ENCRYPTION_KEY
+              value: {{ .Values.global.voteEncryptionKey | quote }}
+            - name: FRONTEND_ORIGINS
+              value: {{ .Values.global.frontendOrigins | quote }}
+            - name: RATE_LIMIT_ENABLED
+              value: {{ ternary "true" "false" .Values.backend.rateLimit.enabled | quote }}
+            - name: RATE_LIMIT_PER_MINUTE
+              value: {{ .Values.backend.rateLimit.perMinute | quote }}
+          ports:
+            - containerPort: 8000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true

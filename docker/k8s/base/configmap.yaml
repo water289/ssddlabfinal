@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: voting-config
+  labels:
+    app: secure-voting
+    component: config
+data:
+  frontend_origins: "http://localhost:5173,https://frontend.example.com"

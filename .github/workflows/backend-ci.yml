@@ -1,0 +1,54 @@
+name: Backend CI
+
+on:
+  push:
+    paths:
+      - 'src/backend/**'
+      - 'docker/**'
+  pull_request:
+    paths:
+      - 'src/backend/**'
+
+jobs:
+  lint-build-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/backend/requirements.txt
+          pip install ruff bandit pytest
+
+      - name: Lint with ruff
+        run: ruff check src/backend || true
+
+      - name: Security scan with bandit
+        run: bandit -r src/backend -x src/backend/tests || true
+
+      - name: Compile check
+        run: python -m compileall src/backend
+
+      - name: Run backend tests
+        working-directory: src/backend
+        run: pytest -q
+
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: src/backend
+          push: false
+          tags: secure-voting-backend:ci
+
+      - name: Scan backend image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: secure-voting-backend:ci
+          format: 'table'
+          severity: 'CRITICAL,HIGH'

@@ -1,0 +1,48 @@
+groups:
+  - name: voting_backend_alerts
+    interval: 30s
+    rules:
+      - alert: BackendDown
+        expr: up{job="secure-voting-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend service is down"
+          description: "The voting backend has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Backend is returning 5xx errors at {{ $value }} requests/sec."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request latency"
+          description: "95th percentile latency is {{ $value }}s, exceeding 2s threshold."
+
+      - alert: DatabaseConnectionFailure
+        expr: up{job="voting-postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection lost"
+          description: "PostgreSQL database is unreachable."
+
+      - alert: HighVoteLoadSpike
+        expr: rate(votes_cast_total[1m]) > 100
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High vote load spike detected"
+          description: "Vote rate is {{ $value }} votes/sec, potential DDoS or election surge."

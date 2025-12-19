@@ -1,0 +1,7 @@
+falco:
+  jsonOutput: true
+  programOutput:
+    enabled: true
+    program: "logger"
+  rulesFiles:
+    - /etc/falco/falco_rules.yaml

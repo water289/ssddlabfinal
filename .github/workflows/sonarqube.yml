@@ -1,0 +1,34 @@
+name: SonarQube SAST Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'ssddlabfinal/src/**'
+
+jobs:
+  sonarqube:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=secure-voting-system
+            -Dsonar.sources=ssddlabfinal/src/backend
+            -Dsonar.python.version=3.11
+
+      - name: SonarQube Quality Gate Check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
