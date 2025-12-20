@@ -11,7 +11,7 @@ spec:
         - StatefulSet
         - Pod
         names:
-        - voting-system-postgres*
+        - voting-system-postgresql*  # ⬅️ Changed to match Bitnami naming
         namespaces:
         - voting-system
   exceptions:
