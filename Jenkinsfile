@@ -114,8 +114,9 @@ PY
             
             # Install Checkov for IaC scanning (pin pydantic to avoid fastapi conflict)
             sudo pip3 install 'pydantic>=1.10.9,<2.0.0' --break-system-packages
-            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-deps
             sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions
+            # Reinstall pydantic 1.x after checkov to ensure compatibility with fastapi
+            sudo pip3 install 'pydantic>=1.10.9,<2.0.0' --break-system-packages --force-reinstall --no-deps
           '''
         }
         
@@ -225,8 +226,8 @@ PY
         echo 'Scanning Docker images with Trivy'
         sh '''
           if ! command -v trivy >/dev/null 2>&1; then
-            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
+            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
             sudo apt-get update && sudo apt-get install -y trivy
           fi
           
