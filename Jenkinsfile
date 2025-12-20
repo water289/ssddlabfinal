@@ -204,7 +204,18 @@ PY
           
           echo '9. SonarQube Analysis (if configured)'
           sh '''
-            if''
+            if [ -f "sonar-project.properties" ]; then
+              echo "Running SonarQube analysis..."
+              sonar-scanner -Dsonar.projectKey=secure-voting-backend || echo "SonarQube scan skipped"
+            else
+              echo "No sonar-project.properties found, skipping SonarQube analysis."
+            fi
+          '''
+        }
+        
+        // Frontend Security Testing
+        dir('src/frontend') {
+          sh '''
             # Use npm ci only if node_modules doesn't exist or package-lock changed
             if [ ! -d "node_modules" ] || [ package-lock.json -nt node_modules ]; then
               echo "Installing frontend dependencies..."
@@ -212,14 +223,7 @@ PY
             else
               echo "Frontend dependencies already installed, skipping..."
             fi
-          ''"sonar-project.properties" ]; then
-              sonar-scanner -Dsonar.projectKey=secure-voting-backend || echo "SonarQube scan skipped"
-            fi
           '''
-        }
-        
-        // Frontend Security Testing
-        dir('src/frontend') {
           sh '''
             # Use npm ci only if node_modules doesn't exist or package-lock changed
             if [ ! -d "node_modules" ] || [ package-lock.json -nt node_modules ]; then
