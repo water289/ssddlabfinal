@@ -592,22 +592,19 @@ EOF
         echo "Helm already installed, skipping..."
       fi
       
-      # Soften Kyverno enforcement during deploy to prevent blocks, capture findings in audit
+      # Soften Kyverno enforcement during deploy
       kubectl patch clusterpolicy disallow-privileged -p '{"spec":{"validationFailureAction":"Audit"}}' --type=merge || true
       kubectl patch clusterpolicy require-non-root -p '{"spec":{"validationFailureAction":"Audit"}}' --type=merge || true
       kubectl patch clusterpolicy require-resource-limits -p '{"spec":{"validationFailureAction":"Audit"}}' --type=merge || true
 
-      # ========== CRITICAL FIX: Temporarily disable Gatekeeper constraints ==========
-      echo "Temporarily removing Gatekeeper constraints to allow PostgreSQL deployment..."
+      # Temporarily disable Gatekeeper constraints
+      echo "Temporarily removing Gatekeeper constraints..."
       kubectl delete k8snoprivileged disallow-privileged-all --ignore-not-found=true || true
       kubectl delete k8snonroot nonroot-all-pods --ignore-not-found=true || true
       kubectl delete k8srequiredlimits require-limits-all --ignore-not-found=true || true
-      
-      # Wait for Gatekeeper to process deletions
       sleep 5
-      # ===============================================================================
       
-      # Delete the namespace completely to remove stuck pods
+      # Delete the namespace completely
       echo "Cleaning up old deployments..."
       kubectl delete namespace ${K8S_NAMESPACE} --ignore-not-found=true
       sleep 5
@@ -617,25 +614,33 @@ EOF
       kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
       sleep 2
       
-      # Apply PostgreSQL policy exception BEFORE deploying
+      # Apply PostgreSQL policy exception
       if [ -f docker/k8s/policies/postgres-exception.yaml ]; then
         kubectl apply -f docker/k8s/policies/postgres-exception.yaml || echo "PostgreSQL exception applied"
       fi
       
-      # Deploy using Helm with volume permissions enabled for PostgreSQL
+      # ========== ADD BITNAMI HELM REPO ==========
+      echo "Adding Bitnami Helm repository..."
+      helm repo add bitnami https://charts.bitnami.com/bitnami || echo "Bitnami repo already added"
+      helm repo update
+      
+      # Update Helm dependencies (downloads PostgreSQL chart)
+      echo "Updating Helm dependencies..."
+      cd docker/helm/voting-system
+      helm dependency update
+      cd -
+      # ===========================================
+      
+      # Deploy using Helm
       helm upgrade --install voting ./docker/helm/voting-system \
         --namespace ${K8S_NAMESPACE} \
         --set backend.image="water289/secure-voting-backend:${BUILD_NUMBER}" \
         --set frontend.image="water289/secure-voting-frontend:${BUILD_NUMBER}" \
         --set postgresql.enabled=true \
-        --set postgresql.auth.enablePostgresUser=true \
         --set postgresql.auth.postgresPassword=${POSTGRES_PASSWORD} \
-        --set postgresql.primary.containerSecurityContext.enabled=false \
-        --set postgresql.primary.podSecurityContext.enabled=true \
-        --set postgresql.primary.podSecurityContext.fsGroup=1001 \
+        --set postgresql.auth.password=${POSTGRES_PASSWORD} \
+        --set postgresql.auth.database=voting \
         --set postgresql.volumePermissions.enabled=true \
-        --set postgresql.volumePermissions.securityContext.runAsUser=0 \
-        --set postgresql.volumePermissions.securityContext.runAsNonRoot=false \
         --set global.database.password=${POSTGRES_PASSWORD} \
         --set global.secretKey=${SECRET_KEY} \
         --wait --timeout=5m
@@ -643,31 +648,25 @@ EOF
       echo "Waiting for deployments to be ready..."
       kubectl rollout status deploy/voting-system-backend -n ${K8S_NAMESPACE} --timeout=300s || true
       kubectl rollout status deploy/voting-system-frontend -n ${K8S_NAMESPACE} --timeout=300s || true
-      kubectl rollout status statefulset/voting-system-postgres -n ${K8S_NAMESPACE} --timeout=300s || true
+      kubectl rollout status statefulset/voting-system-postgresql -n ${K8S_NAMESPACE} --timeout=300s || true
       
       echo "Deployment Status:"
       kubectl get pods -n ${K8S_NAMESPACE}
       kubectl get svc -n ${K8S_NAMESPACE}
-      kubectl get hpa -n ${K8S_NAMESPACE} || true
       
-      echo "Checking pod health..."
-      kubectl get pods -n ${K8S_NAMESPACE} -o wide
-
-      # ========== Re-apply Gatekeeper policies after successful deployment ==========
+      # Re-apply Gatekeeper policies
       echo "Re-applying Gatekeeper policies..."
       sleep 10
-      kubectl apply -f docker/k8s/policies/gatekeeper/templates/ || echo "Gatekeeper templates applied"
+      kubectl apply -f docker/k8s/policies/gatekeeper/templates/ || true
       sleep 5
-      kubectl apply -f docker/k8s/policies/gatekeeper/constraints/ || echo "Gatekeeper constraints applied"
-      echo "✓ Gatekeeper policies restored"
-      # ===============================================================================
-
-      # Restore Kyverno enforcement after deploy
+      kubectl apply -f docker/k8s/policies/gatekeeper/constraints/ || true
+      
+      # Restore Kyverno enforcement
       kubectl patch clusterpolicy disallow-privileged -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
       kubectl patch clusterpolicy require-non-root -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
       kubectl patch clusterpolicy require-resource-limits -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
       
-      echo "✓ Deployment complete with policy enforcement restored"
+      echo "✓ Deployment complete"
     '''
   }
 }
