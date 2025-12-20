@@ -19,9 +19,9 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1001
-        runAsGroup: 1001
-        fsGroup: 1001
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
         - name: frontend
           image: {{ .Values.frontend.image }}
@@ -42,4 +42,7 @@ spec:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL

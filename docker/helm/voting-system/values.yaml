@@ -20,6 +20,14 @@ backend:
     limits:
       cpu: 500m
       memory: 512Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
   rateLimit:
     enabled: true
     perMinute: 120
@@ -34,6 +42,14 @@ frontend:
     limits:
       cpu: 200m
       memory: 256Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
   apiUrl: "http://voting-backend:8000"
 
 postgres:
@@ -46,6 +62,15 @@ postgres:
     limits:
       cpu: 500m
       memory: 1Gi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+  podSecurityContext:
+    fsGroup: 999
+    runAsNonRoot: true
+    runAsUser: 999
 
 service:
   type: ClusterIP

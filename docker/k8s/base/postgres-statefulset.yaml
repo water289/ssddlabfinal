@@ -22,6 +22,7 @@ spec:
         runAsUser: 999
         runAsGroup: 999
         fsGroup: 999
+        runAsNonRoot: true
       containers:
         - name: postgres
           image: postgres:15-alpine
@@ -50,6 +51,13 @@ spec:
             limits:
               cpu: 500m
               memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
   volumeClaimTemplates:
     - metadata:
         name: pgdata
