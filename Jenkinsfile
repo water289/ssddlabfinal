@@ -112,15 +112,15 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Install Checkov for IaC scanning
-            pip3 install checkov || true
+            # Install Checkov for IaC scanning (sudo for externally-managed env)
+            sudo pip3 install checkov --break-system-packages || true
           '''
         }
         
         // Backend Security Testing
         dir('src/backend') {
-          sh 'python3 -m pip install --upgrade pip'
-          sh 'pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety'
+          sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
+          sh 'sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety --break-system-packages'
           
           echo '1. Static Code Analysis with Ruff'
           sh 'ruff check . --output-format=json > ruff-report.json || true'
