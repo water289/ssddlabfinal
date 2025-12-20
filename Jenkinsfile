@@ -643,8 +643,7 @@ EOF
         --set postgresql.volumePermissions.enabled=true \
         --set global.database.password=${POSTGRES_PASSWORD} \
         --set global.secretKey=${SECRET_KEY} \
-        --wait --timeout=5m
-      
+         
       echo "Waiting for deployments to be ready..."
       kubectl rollout status deploy/voting-system-backend -n ${K8S_NAMESPACE} --timeout=300s || true
       kubectl rollout status deploy/voting-system-frontend -n ${K8S_NAMESPACE} --timeout=300s || true
