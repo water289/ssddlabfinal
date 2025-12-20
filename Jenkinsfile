@@ -660,7 +660,10 @@ EOF
       sleep 5
       kubectl apply -f docker/k8s/policies/gatekeeper/constraints/ || true
       
-      
+      # Restore Kyverno enforcement
+      kubectl patch clusterpolicy disallow-privileged -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
+      kubectl patch clusterpolicy require-non-root -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
+      kubectl patch clusterpolicy require-resource-limits -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
       
       echo "✓ Deployment complete"
     '''
@@ -743,11 +746,6 @@ EOF
           echo "Monitoring stack deployed!"
           kubectl get pods -n monitoring
           kubectl get svc -n monitoring
-          # Restore Kyverno enforcement
-      
-          kubectl patch clusterpolicy disallow-privileged -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
-          kubectl patch clusterpolicy require-non-root -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
-          kubectl patch clusterpolicy require-resource-limits -p '{"spec":{"validationFailureAction":"Enforce"}}' --type=merge || true
         '''
       }
     }
@@ -1201,7 +1199,7 @@ EOF
           echo "- Monitoring: ${INSTALL_MONITORING}"
           echo "- Policy engines: ${INSTALL_POLICIES}"
           echo ""
-          if [ "${DEPLOY_TO_K8S}" = "true" ]; then
+          if [ "${DEPLOY_TO_K8S}" == "true" ]; then
             echo "Application URLs:"
             echo "- Backend: http://$(hostname -I | awk '{print $1}'):8000"
             echo "- Frontend: http://$(hostname -I | awk '{print $1}'):5173"
