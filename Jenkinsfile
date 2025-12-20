@@ -112,8 +112,10 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Install Checkov for IaC scanning (ignore Debian typing-extensions conflict)
-            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions || true
+            # Install Checkov for IaC scanning (pin pydantic to avoid fastapi conflict)
+            sudo pip3 install 'pydantic>=1.10.9,<2.0.0' --break-system-packages
+            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-deps
+            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions
           '''
         }
         
@@ -124,7 +126,7 @@ PY
           
           echo '1. Static Code Analysis with Ruff'
           sh 'ruff check . --output-format=json > ruff-report.json || true'
-          sh 'ruff check . --output-format=html > ruff-report.html || true'
+          sh 'ruff check . --output-format=sarif > ruff-report.sarif || true'
           
           echo '2. Security Scanning with Bandit (SAST)'
           sh 'bandit -r . -x __pycache__,tests -f json -o bandit-report.json || true'
@@ -216,8 +218,8 @@ PY
         
         // Build Docker Images
         echo 'Building Docker Images'
-        sh 'docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} src/backend'
-        sh 'docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} src/frontend'
+        sh 'sudo docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} src/backend'
+        sh 'sudo docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} src/frontend'
         
         // Container Image Scanning with Trivy
         echo 'Scanning Docker images with Trivy'
@@ -229,10 +231,10 @@ PY
           fi
           
           # Scan images and generate reports
-          trivy image --format json --output trivy-backend-report.json ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
-          trivy image --format table --output trivy-backend-report.txt ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
-          trivy image --format json --output trivy-frontend-report.json ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
-          trivy image --format table --output trivy-frontend-report.txt ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
+          sudo trivy image --format json --output trivy-backend-report.json ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
+          sudo trivy image --format table --output trivy-backend-report.txt ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
+          sudo trivy image --format json --output trivy-frontend-report.json ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
+          sudo trivy image --format table --output trivy-frontend-report.txt ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
         '''
         
         // Publish ALL Reports
@@ -427,11 +429,11 @@ PY
       steps {
         echo '=== PHASE 5: Image Push ==='
         echo 'Pushing Docker Image to DockerHub'
-        sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
-        sh 'docker push ${BACKEND_IMAGE}:latest'
-        sh 'docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}'
-        sh 'docker push ${FRONTEND_IMAGE}:latest'
-        sh 'docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}'
+        sh 'echo ${DOCKERHUB_CREDENTIALS_PSW} | sudo docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin'
+        sh 'sudo docker push ${BACKEND_IMAGE}:latest'
+        sh 'sudo docker push ${BACKEND_IMAGE}:${BUILD_NUMBER}'
+        sh 'sudo docker push ${FRONTEND_IMAGE}:latest'
+        sh 'sudo docker push ${FRONTEND_IMAGE}:${BUILD_NUMBER}'
       }
     }
 
