@@ -4,6 +4,8 @@
 
 Your Jenkins pipeline now includes **12+ automated security scans** that generate HTML reports, fully aligned with SSDD project requirements (Weeks 10-14).
 
+Recent note: GitHub pushes on `main` automatically trigger this Jenkins pipeline via the configured webhook.
+
 ----
 
 ## 📊 What's Been Automated
