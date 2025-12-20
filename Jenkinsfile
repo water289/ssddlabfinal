@@ -17,6 +17,7 @@ pipeline {
     booleanParam(name: 'SETUP_SECURITY', defaultValue: false, description: 'Run security hardening scripts (first-time setup)')
     booleanParam(name: 'USE_SECRETS_MANAGER', defaultValue: true, description: 'Retrieve secrets from AWS Secrets Manager')
     booleanParam(name: 'INSTALL_POLICIES', defaultValue: true, description: 'Install Kyverno and OPA Gatekeeper policies')
+    booleanParam(name: 'RUN_DAST', defaultValue: false, description: 'Run OWASP ZAP dynamic security testing (requires ZAP installation)')
   }
   
   stages {
@@ -415,7 +416,7 @@ PY
     }
     
     stage('DAST - Dynamic Application Security Testing') {
-      when { expression { return params.DEPLOY_TO_K8S } }
+      when { expression { return params.RUN_DAST && params.DEPLOY_TO_K8S } }
       steps {
         echo '=== PHASE 4C: OWASP ZAP Dynamic Scanning ==='
         script {
