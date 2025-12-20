@@ -18,7 +18,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 
-from . import auth, database, models, crypto
+import auth
+import database
+import models
+import crypto
 
 load_dotenv()
 models.Base.metadata.create_all(bind=database.engine)
