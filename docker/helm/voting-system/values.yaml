@@ -2,7 +2,7 @@ global:
   imagePullSecrets: []
   secretKey: "change-me"
   database:
-    host: "voting-postgres"
+    host: "voting-system-postgresql"  # ⬅️ Changed to match Bitnami naming
     user: "postgres"
     password: "postgres"
     name: "voting"
@@ -50,39 +50,48 @@ frontend:
     capabilities:
       drop:
         - ALL
-  apiUrl: "http://voting-backend:8000"
+  apiUrl: "http://voting-system-backend:8000"
 
-postgres:
-  image: "postgres:15-alpine"
-  storage: 2Gi
-  resources:
-    requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
-  containerSecurityContext:
-    enabled: true
-    runAsNonRoot: true
-    runAsUser: 1001
-    runAsGroup: 1001
-    allowPrivilegeEscalation: false
-    privileged: false
-    readOnlyRootFilesystem: false
-    capabilities:
-      drop:
-        - ALL
-  podSecurityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsNonRoot: true
-    runAsUser: 1001
+# ========== USE BITNAMI POSTGRESQL CHART ==========
+postgresql:
+  enabled: true
+  auth:
+    enablePostgresUser: true
+    postgresPassword: "postgres"
+    username: "postgres"
+    password: "postgres"
+    database: "voting"
+  
+  primary:
+    # Disable container security context (let volumePermissions handle it)
+    containerSecurityContext:
+      enabled: false
+    
+    # Enable pod security context
+    podSecurityContext:
+      enabled: true
+      fsGroup: 1001
+    
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+    
+    # Persistence
+    persistence:
+      enabled: true
+      size: 2Gi
+  
+  # ⬅️ CRITICAL: Enable volume permissions init container
   volumePermissions:
     enabled: true
     securityContext:
       runAsUser: 0
+      runAsNonRoot: false
 
 service:
   type: ClusterIP
-
