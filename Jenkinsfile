@@ -224,15 +224,6 @@ PY
               echo "Frontend dependencies already installed, skipping..."
             fi
           '''
-          sh '''
-            # Use npm ci only if node_modules doesn't exist or package-lock changed
-            if [ ! -d "node_modules" ] || [ package-lock.json -nt node_modules ]; then
-              echo "Installing frontend dependencies..."
-              npm ci
-            else
-              echo "Frontend dependencies already installed, skipping..."
-            fi
-          '''
           
           echo '10. NPM Audit for Frontend Dependencies'
           sh 'npm audit --json > npm-audit-report.json || true'
