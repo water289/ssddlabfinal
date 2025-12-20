@@ -5,7 +5,7 @@ import os
 import time
 from collections import Counter
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
