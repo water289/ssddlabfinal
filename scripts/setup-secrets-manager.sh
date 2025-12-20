@@ -12,8 +12,12 @@ echo "=== AWS Secrets Manager Setup ==="
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
     echo "ERROR: AWS CLI not found. Installing..."
-    sudo apt-get update
-    sudo apt-get install -y awscli
+    if sudo apt-get update && sudo apt-get install -y awscli; then
+        echo "AWS CLI installed via apt."
+    else
+        echo "apt install failed; installing AWS CLI via pip..."
+        sudo pip3 install awscli==1.32.0 || { echo "AWS CLI install failed"; exit 1; }
+    fi
 fi
 
 # Check if jq is installed

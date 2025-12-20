@@ -96,10 +96,20 @@ PY
               export PATH="$PWD/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
             fi
             
-            # Install OWASP Dependency-Check
+            # Install OWASP Dependency-Check (non-interactive extract)
             if ! command -v dependency-check >/dev/null 2>&1; then
-              wget -q https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
-              unzip -q dependency-check-8.4.0-release.zip
+              wget -q https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -O dependency-check.zip
+              python3 - <<'PY'
+import os, shutil, zipfile
+archive = 'dependency-check.zip'
+target_dir = 'dependency-check'
+if os.path.isdir(target_dir):
+    shutil.rmtree(target_dir)
+with zipfile.ZipFile(archive) as zf:
+    zf.extractall()
+PY
+              chmod +x dependency-check/bin/dependency-check.sh || true
+              export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
             # Install Checkov for IaC scanning
