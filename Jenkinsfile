@@ -220,7 +220,15 @@ PY
         
         // Frontend Security Testing
         dir('src/frontend') {
-          sh 'npm ci'
+          sh '''
+            # Use npm ci only if node_modules doesn't exist or package-lock changed
+            if [ ! -d "node_modules" ] || [ package-lock.json -nt node_modules ]; then
+              echo "Installing frontend dependencies..."
+              npm ci
+            else
+              echo "Frontend dependencies already installed, skipping..."
+            fi
+          '''
           
           echo '10. NPM Audit for Frontend Dependencies'
           sh 'npm audit --json > npm-audit-report.json || true'
@@ -247,7 +255,15 @@ PY
         echo '=== PHASE 4B: Build Docker Images & Publish All Reports ==='
         
         // Build Docker Images
-        echoecho "Installing Trivy..."
+        echo 'Building Docker Images'
+        sh 'sudo docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} src/backend'
+        sh 'sudo docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} src/frontend'
+        
+        // Container Image Scanning with Trivy
+        echo 'Scanning Docker images with Trivy'
+        sh '''
+          if ! command -v trivy >/dev/null 2>&1; then
+            echo "Installing Trivy..."
             # Install trivy via apt without manual key management
             sudo apt-get update -qq
             sudo apt-get install -y wget apt-transport-https gnupg lsb-release
@@ -257,14 +273,6 @@ PY
             sudo apt-get install -y trivy
           else
             echo "Trivy already installed, skipping..."
-          if ! command -v trivy >/dev/null 2>&1; then
-            # Install trivy via apt without manual key management
-            sudo apt-get update
-            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo tee /etc/apt/trusted.gpg.d/trivy.asc
-            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-            sudo apt-get update
-            sudo apt-get install -y trivy
           fi
           
           # Scan images (jenkins user now in docker group for socket access)
