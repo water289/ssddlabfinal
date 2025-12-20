@@ -4,10 +4,11 @@ import logging
 import os
 import time
 from collections import Counter
+from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, AsyncGenerator, Dict, List
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -26,7 +27,38 @@ import crypto
 load_dotenv()
 models.Base.metadata.create_all(bind=database.engine)
 
-app = FastAPI(title="Secure Voting Backend")
+
+def _ensure_admin_user() -> None:
+    """Ensure admin user exists in the database."""
+    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123")
+    if not admin_username or not admin_password:
+        return
+    db: Session = database.SessionLocal()
+    try:
+        existing = db.query(models.User).filter(models.User.username == admin_username).first()
+        if existing:
+            return
+        admin = models.User(
+            username=admin_username,
+            hashed_password=auth.get_password_hash(admin_password),
+            role="admin",
+        )
+        db.add(admin)
+        db.commit()
+        _log_event("admin_seeded", username=admin_username)
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Manage app lifespan: startup and shutdown."""
+    _ensure_admin_user()
+    yield
+
+
+app = FastAPI(title="Secure Voting Backend", lifespan=lifespan)
 
 FRONTEND_ORIGINS = [origin for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173").split(",") if origin]
 app.add_middleware(
@@ -99,27 +131,6 @@ def compute_digest(counts: Dict[str, int]) -> str:
     for choice in sorted(counts.keys()):
         digest.update(f"{choice}:{counts[choice]}".encode())
     return digest.hexdigest()
-@app.on_event("startup")
-def ensure_admin_user() -> None:
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "Admin@123")
-    if not admin_username or not admin_password:
-        return
-    db: Session = database.SessionLocal()
-    try:
-        existing = db.query(models.User).filter(models.User.username == admin_username).first()
-        if existing:
-            return
-        admin = models.User(
-            username=admin_username,
-            hashed_password=auth.get_password_hash(admin_password),
-            role="admin",
-        )
-        db.add(admin)
-        db.commit()
-        _log_event("admin_seeded", username=admin_username)
-    finally:
-        db.close()
 
 
 class RegisterIn(BaseModel):
@@ -213,7 +224,7 @@ def read_my_votes(current_user: models.User = Depends(auth.get_current_user), db
     return out
 
 @app.get("/elections", response_model=List[ElectionOut])
-def list_elections(include_inactive: bool = False, db: Session = Depends(database.get_db)):
+def list_elections(include_inactive: bool = Query(False), db: Session = Depends(database.get_db)):
     query = db.query(models.Election)
     if not include_inactive:
         query = query.filter(models.Election.is_active == True)
