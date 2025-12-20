@@ -588,10 +588,8 @@ EOF
           # Deploy using Helm with secrets from Secrets Manager or Jenkins credentials
           helm upgrade --install voting ./docker/helm/voting-system \
             --namespace ${K8S_NAMESPACE} \
-            --set backend.image.repository=${BACKEND_IMAGE} \
-            --set backend.image.tag=${BUILD_NUMBER} \
-            --set frontend.image.repository=${FRONTEND_IMAGE} \
-            --set frontend.image.tag=${BUILD_NUMBER} \
+            --set backend.image="water289/secure-voting-backend:${BUILD_NUMBER}" \
+            --set frontend.image="water289/secure-voting-frontend:${BUILD_NUMBER}" \
             --set postgresql.primary.containerSecurityContext.enabled=true \
             --set postgresql.primary.containerSecurityContext.runAsNonRoot=true \
             --set postgresql.primary.containerSecurityContext.runAsUser=1001 \
