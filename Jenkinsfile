@@ -590,14 +590,19 @@ EOF
             --namespace ${K8S_NAMESPACE} \
             --set backend.image="water289/secure-voting-backend:${BUILD_NUMBER}" \
             --set frontend.image="water289/secure-voting-frontend:${BUILD_NUMBER}" \
+            --set postgresql.enabled=true \
+            --set postgresql.auth.enablePostgresUser=true \
+            --set postgresql.auth.postgresPassword=${POSTGRES_PASSWORD} \
             --set postgresql.primary.containerSecurityContext.enabled=true \
             --set postgresql.primary.containerSecurityContext.runAsNonRoot=true \
             --set postgresql.primary.containerSecurityContext.runAsUser=1001 \
             --set postgresql.primary.containerSecurityContext.runAsGroup=1001 \
             --set postgresql.primary.containerSecurityContext.privileged=false \
             --set postgresql.primary.containerSecurityContext.allowPrivilegeEscalation=false \
+            --set postgresql.primary.podSecurityContext.enabled=true \
             --set postgresql.primary.podSecurityContext.fsGroup=1001 \
             --set postgresql.volumePermissions.enabled=true \
+            --set postgresql.volumePermissions.securityContext.runAsUser=0 \
             --set global.database.password=${POSTGRES_PASSWORD} \
             --set global.secretKey=${SECRET_KEY} \
             --wait --timeout=5m

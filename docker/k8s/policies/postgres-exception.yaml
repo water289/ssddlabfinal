@@ -12,9 +12,8 @@ spec:
         names:
         - voting-system-postgres
   exceptions:
-  - policyName: disallow-privileged
+  - policyNames:
+    - disallow-privileged
+    - require-non-root
     ruleNames:
-    - autogen-no-privileged
-  - policyName: require-non-root
-    ruleNames:
-    - autogen-check-non-root
+    - '*'
