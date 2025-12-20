@@ -578,7 +578,15 @@ EOF
             echo "Helm already installed, skipping..."
           fi
           
+          # Delete the namespace completely to remove stuck pods
+          echo "Cleaning up old deployments..."
+          kubectl delete namespace ${K8S_NAMESPACE} --ignore-not-found=true
+          sleep 5
+          
+          # Recreate fresh namespace
+          echo "Creating fresh namespace..."
           kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+          sleep 2
           
           # Apply PostgreSQL policy exception BEFORE deploying
           if [ -f docker/k8s/policies/postgres-exception.yaml ]; then
@@ -603,6 +611,7 @@ EOF
             --set postgresql.primary.podSecurityContext.fsGroup=1001 \
             --set postgresql.volumePermissions.enabled=true \
             --set postgresql.volumePermissions.securityContext.runAsUser=0 \
+            --set postgresql.volumePermissions.securityContext.runAsNonRoot=false \
             --set global.database.password=${POSTGRES_PASSWORD} \
             --set global.secretKey=${SECRET_KEY} \
             --wait --timeout=5m

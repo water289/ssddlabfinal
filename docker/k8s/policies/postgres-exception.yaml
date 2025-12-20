@@ -12,8 +12,9 @@ spec:
         names:
         - voting-system-postgres
   exceptions:
-  - policyNames:
-    - disallow-privileged
-    - require-non-root
+  - policyName: disallow-privileged
+    ruleNames:
+    - '*'
+  - policyName: require-non-root
     ruleNames:
     - '*'
