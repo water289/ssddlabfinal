@@ -580,6 +580,11 @@ EOF
           
           kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
           
+          # Apply PostgreSQL policy exception BEFORE deploying
+          if [ -f docker/k8s/policies/postgres-exception.yaml ]; then
+            kubectl apply -f docker/k8s/policies/postgres-exception.yaml || echo "PostgreSQL exception applied"
+          fi
+          
           # Deploy using Helm with secrets from Secrets Manager or Jenkins credentials
           helm upgrade --install voting ./docker/helm/voting-system \
             --namespace ${K8S_NAMESPACE} \
@@ -587,6 +592,11 @@ EOF
             --set backend.image.tag=${BUILD_NUMBER} \
             --set frontend.image.repository=${FRONTEND_IMAGE} \
             --set frontend.image.tag=${BUILD_NUMBER} \
+            --set postgres.primary.containerSecurityContext.runAsNonRoot=true \
+            --set postgres.primary.containerSecurityContext.runAsUser=1001 \
+            --set postgres.primary.containerSecurityContext.privileged=false \
+            --set postgres.primary.containerSecurityContext.allowPrivilegeEscalation=false \
+            --set postgres.primary.podSecurityContext.fsGroup=1001 \
             --set global.database.password=${POSTGRES_PASSWORD} \
             --set global.secretKey=${SECRET_KEY} \
             --wait --timeout=5m

@@ -1,0 +1,19 @@
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: postgres-exception
+  namespace: voting-system
+spec:
+  exceptions:
+  - policyNames:
+    - require-non-root
+    - disallow-privileged
+  resources:
+  - kinds:
+    - StatefulSet
+    names:
+    - voting-system-postgres
+  - kinds:
+    - Pod
+    names:
+    - voting-system-postgres-*
