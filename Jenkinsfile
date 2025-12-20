@@ -112,32 +112,50 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Install Checkov for IaC scanning (pin pydantic to avoid fastapi conflict)
-            sudo pip3 install 'pydantic>=1.10.9,<2.0.0' --break-system-packages
+            # Install Checkov for IaC scanning (will use pydantic 2.x)
             sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions
-            # Reinstall pydantic 1.x after checkov to ensure compatibility with fastapi
-            sudo pip3 install 'pydantic>=1.10.9,<2.0.0' --break-system-packages --force-reinstall --no-deps
           '''
         }
+        
+        // Infrastructure as Code Scanning (run BEFORE backend testing to avoid pydantic conflicts)
+        echo '1. IaC Security Scanning with Checkov'
+        sh '''
+          if [ -d "iac/terraform" ]; then
+            checkov -d iac/terraform --output json > checkov-iac-report.json || true
+            checkov -d iac/terraform --output cli > checkov-iac-report.txt || true
+          fi
+        '''
+        
+        echo '2. Kubernetes YAML Scanning'
+        sh '''
+          checkov -d docker/k8s --output json > checkov-k8s-report.json || true
+          checkov -d docker/k8s --output cli > checkov-k8s-report.txt || true
+        '''
+        
+        echo '3. Dockerfile Scanning with Checkov'
+        sh '''
+          checkov -f src/backend/Dockerfile --output json > checkov-backend-dockerfile.json || true
+          checkov -f src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
+        '''
         
         // Backend Security Testing
         dir('src/backend') {
           sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
           sh 'sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages'
           
-          echo '1. Static Code Analysis with Ruff'
+          echo '4. Static Code Analysis with Ruff'
           sh 'ruff check . --output-format=json > ruff-report.json || true'
           sh 'ruff check . --output-format=sarif > ruff-report.sarif || true'
           
-          echo '2. Security Scanning with Bandit (SAST)'
+          echo '5. Security Scanning with Bandit (SAST)'
           sh 'bandit -r . -x __pycache__,tests -f json -o bandit-report.json || true'
           sh 'bandit -r . -x __pycache__,tests -f html -o bandit-report.html || true'
           
-          echo '3. Dependency Vulnerability Scanning with Safety'
+          echo '6. Dependency Vulnerability Scanning with Safety'
           sh 'safety check --json > safety-report.json || true'
           sh 'safety check > safety-report.txt || true'
           
-          echo '4. Snyk Code Scanning (if token available)'
+          echo '7. Snyk Code Scanning (if token available)'
           sh '''
             if command -v snyk >/dev/null 2>&1; then
               snyk test --json > snyk-report.json || true
@@ -147,9 +165,9 @@ PY
             fi
           '''
           
-          echo '5. Unit Testing with Coverage'
+          echo '8. Unit Testing with Coverage'
           sh '''
-            pytest tests/ \
+            PYTHONPATH=. pytest tests/ \
               --junitxml=test-results.xml \
               --cov=. \
               --cov-report=xml:coverage.xml \
@@ -160,7 +178,7 @@ PY
               || echo "Tests completed with warnings"
           '''
           
-          echo '6. SonarQube Analysis (if configured)'
+          echo '9. SonarQube Analysis (if configured)'
           sh '''
             if [ -f "sonar-project.properties" ]; then
               sonar-scanner -Dsonar.projectKey=secure-voting-backend || echo "SonarQube scan skipped"
@@ -172,15 +190,15 @@ PY
         dir('src/frontend') {
           sh 'npm ci'
           
-          echo '7. NPM Audit for Frontend Dependencies'
+          echo '10. NPM Audit for Frontend Dependencies'
           sh 'npm audit --json > npm-audit-report.json || true'
           sh 'npm audit > npm-audit-report.txt || true'
           
-          echo '8. ESLint for Frontend Code Quality'
+          echo '11. ESLint for Frontend Code Quality'
           sh 'npm run lint -- --format json --output-file eslint-report.json || true'
           sh 'npm run lint -- --format html --output-file eslint-report.html || true'
           
-          echo '9. Snyk Frontend Scanning'
+          echo '12. Snyk Frontend Scanning'
           sh '''
             if command -v snyk >/dev/null 2>&1; then
               snyk test --json > snyk-frontend-report.json || true
@@ -189,27 +207,6 @@ PY
           
           sh 'npm run build'
         }
-        
-        // Infrastructure as Code Scanning
-        echo '10. IaC Security Scanning with Checkov'
-        sh '''
-          if [ -d "iac/terraform" ]; then
-            checkov -d iac/terraform --output json > checkov-iac-report.json || true
-            checkov -d iac/terraform --output cli > checkov-iac-report.txt || true
-          fi
-        '''
-        
-        echo '11. Kubernetes YAML Scanning'
-        sh '''
-          checkov -d docker/k8s --output json > checkov-k8s-report.json || true
-          checkov -d docker/k8s --output cli > checkov-k8s-report.txt || true
-        '''
-        
-        echo '12. Dockerfile Scanning with Checkov'
-        sh '''
-          checkov -f src/backend/Dockerfile --output json > checkov-backend-dockerfile.json || true
-          checkov -f src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
-        '''
       }
     }
     
@@ -226,9 +223,13 @@ PY
         echo 'Scanning Docker images with Trivy'
         sh '''
           if ! command -v trivy >/dev/null 2>&1; then
-            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo gpg --dearmor -o /usr/share/keyrings/trivy.gpg
-            echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
-            sudo apt-get update && sudo apt-get install -y trivy
+            # Install trivy via apt without manual key management
+            sudo apt-get update
+            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo tee /etc/apt/trusted.gpg.d/trivy.asc
+            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+            sudo apt-get update
+            sudo apt-get install -y trivy
           fi
           
           # Scan images and generate reports
