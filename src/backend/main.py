@@ -68,6 +68,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    response = await call_next(request)
+    # Content Security Policy - restrict sources; allow localhost for dev
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:5173; "
+        "connect-src 'self' http://localhost:8000 ws://localhost:5173; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "frame-ancestors 'none';"
+    )
+    response.headers.setdefault('Content-Security-Policy', csp)
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('Referrer-Policy', 'no-referrer-when-downgrade')
+    response.headers.setdefault('Permissions-Policy', "geolocation=(), microphone=(), camera=()")
+    # Remove server header to avoid disclosing implementation
+    if 'server' in response.headers:
+        try:
+            del response.headers['server']
+        except Exception:
+            pass
+    return response
+
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("secure_voting")
 
