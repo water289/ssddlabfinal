@@ -112,10 +112,9 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Completely uninstall pydantic and clear cache before installing checkov
-            sudo pip3 uninstall -y pydantic pydantic-core || true
-            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic* || true
-            sudo rm -rf /usr/local/lib/python3.12/dist-packages/__pycache__/pydantic* || true
+            # Completely uninstall pydantic and clear ALL files including .so before installing checkov
+            sudo pip3 uninstall -y pydantic pydantic-core pydantic-settings || true
+            sudo find /usr/local/lib/python3.12/dist-packages -name 'pydantic*' -delete || true
             sudo pip3 cache purge || true
             sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-cache-dir
           '''
@@ -242,7 +241,7 @@ PY
             sudo apt-get install -y trivy
           fi
           
-          # Scan images and generate reports (trivy in sudoers, no password needed)
+          # Scan images (jenkins user now in docker group for socket access)
           trivy image --format json --output trivy-backend-report.json ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
           trivy image --format table --output trivy-backend-report.txt ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
           trivy image --format json --output trivy-frontend-report.json ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
