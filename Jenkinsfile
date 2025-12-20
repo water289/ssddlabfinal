@@ -12,11 +12,11 @@ pipeline {
   }
 
   parameters {
-    booleanParam(name: 'DEPLOY_TO_K8S', defaultValue: false, description: 'Deploy to Kubernetes after build')
-    booleanParam(name: 'INSTALL_MONITORING', defaultValue: false, description: 'Install kube-prometheus-stack when deploying')
+    booleanParam(name: 'DEPLOY_TO_K8S', defaultValue: true, description: 'Deploy to Kubernetes after build')
+    booleanParam(name: 'INSTALL_MONITORING', defaultValue: true, description: 'Install kube-prometheus-stack when deploying')
     booleanParam(name: 'SETUP_SECURITY', defaultValue: false, description: 'Run security hardening scripts (first-time setup)')
     booleanParam(name: 'USE_SECRETS_MANAGER', defaultValue: true, description: 'Retrieve secrets from AWS Secrets Manager')
-    booleanParam(name: 'INSTALL_POLICIES', defaultValue: false, description: 'Install Kyverno and OPA Gatekeeper policies')
+    booleanParam(name: 'INSTALL_POLICIES', defaultValue: true, description: 'Install Kyverno and OPA Gatekeeper policies')
   }
   
   stages {
