@@ -120,7 +120,7 @@ PY
         // Backend Security Testing
         dir('src/backend') {
           sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
-          sh 'sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety --break-system-packages'
+          sh 'sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages'
           
           echo '1. Static Code Analysis with Ruff'
           sh 'ruff check . --output-format=json > ruff-report.json || true'
