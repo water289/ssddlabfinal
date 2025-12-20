@@ -91,9 +91,11 @@ echo "✓ Secrets retrieved and stored in Kubernetes"
 # Export for Jenkins environment (optional)
 if [ -n "$JENKINS_HOME" ]; then
     echo "Exporting secrets to Jenkins environment..."
-    echo "DATABASE_URL=$DATABASE_URL" >> $WORKSPACE/secrets.env
-    echo "SECRET_KEY=$SECRET_KEY" >> $WORKSPACE/secrets.env
-    echo "VOTE_ENCRYPTION_KEY=$ENCRYPTION_KEY" >> $WORKSPACE/secrets.env
+    SECRETS_FILE="$WORKSPACE/secrets.env"
+    mkdir -p "$(dirname "$SECRETS_FILE")"
+    printf 'DATABASE_URL=%s\n' "$DATABASE_URL" >> "$SECRETS_FILE"
+    printf 'SECRET_KEY=%s\n' "$SECRET_KEY" >> "$SECRETS_FILE"
+    printf 'VOTE_ENCRYPTION_KEY=%s\n' "$ENCRYPTION_KEY" >> "$SECRETS_FILE"
 fi
 
 echo "=== Secrets setup complete ==="

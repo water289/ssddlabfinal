@@ -1,21 +1,27 @@
-const react = require('eslint-plugin-react')
+const reactPlugin = require('eslint-plugin-react')
+const reactRecommended = require('eslint-plugin-react/configs/recommended')
 
 module.exports = [
+  // Global ignores (replace .eslintignore)
   {
     ignores: ['dist/**', 'node_modules/**', 'public/**'],
   },
+  // React recommended rules (flat config)
+  reactRecommended,
+  // Project-specific settings and overrides
   {
     files: ['src/**/*.{js,jsx}'],
-    extends: ['eslint:recommended', 'plugin:react/recommended'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
-      ecmaFeatures: {
-        jsx: true,
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
       },
     },
     plugins: {
-      react,
+      react: reactPlugin,
     },
     rules: {
       'react/react-in-jsx-scope': 'off',
