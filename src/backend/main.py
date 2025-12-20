@@ -8,10 +8,9 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
+from fastapi import Depends, FastAPI, Form, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, ConfigDict, Field
 from prometheus_client import Counter as PromCounter
 from prometheus_client import Histogram, make_asgi_app
@@ -191,8 +190,12 @@ def register(payload: RegisterIn, db: Session = Depends(database.get_db)):
     return {"username": user.username, "role": user.role}
 
 @app.post("/auth/token", response_model=TokenResponse)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
-    user = auth.authenticate_user(db, form_data.username, form_data.password)
+def login(
+    username: str = Form(..., min_length=3, max_length=150),
+    password: str = Form(..., min_length=8),
+    db: Session = Depends(database.get_db),
+):
+    user = auth.authenticate_user(db, username, password)
     if not user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect username or password")
     access_token = auth.create_access_token(data={"sub": user.username, "role": user.role})
