@@ -32,7 +32,8 @@ spec:
           imagePullPolicy: IfNotPresent
           env:
             - name: DATABASE_URL
-              value: "postgres://{{ .Values.global.database.user }}:{{ .Values.global.database.password }}@{{ .Values.global.database.host }}:{{ .Values.global.database.port }}/{{ .Values.global.database.name }}"
+              # ⬅️ CHANGED: Use Bitnami service naming convention
+              value: "postgresql://{{ .Values.global.database.user }}:{{ .Values.global.database.password }}@{{ include "voting-system.fullname" . }}-postgresql:{{ .Values.global.database.port }}/{{ .Values.global.database.name }}"
             - name: SECRET_KEY
               value: {{ .Values.global.secretKey | quote }}
             - name: VOTE_ENCRYPTION_KEY
