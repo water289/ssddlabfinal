@@ -112,8 +112,12 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Install Checkov for IaC scanning (will use pydantic 2.x)
-            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions
+            # Completely uninstall pydantic and clear cache before installing checkov
+            sudo pip3 uninstall -y pydantic pydantic-core || true
+            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic* || true
+            sudo rm -rf /usr/local/lib/python3.12/dist-packages/__pycache__/pydantic* || true
+            sudo pip3 cache purge || true
+            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-cache-dir
           '''
         }
         
@@ -138,10 +142,16 @@ PY
           checkov -f src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
         '''
         
-        // Backend Security Testing
+        // Backend Security Testing (uninstall pydantic 2.x before installing 1.x)
         dir('src/backend') {
           sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
-          sh 'sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages'
+          sh '''
+            # Completely remove pydantic 2.x and install backend deps with pydantic 1.x
+            sudo pip3 uninstall -y pydantic pydantic-core || true
+            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic* || true
+            sudo pip3 cache purge || true
+            sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages --no-cache-dir
+          '''
           
           echo '4. Static Code Analysis with Ruff'
           sh 'ruff check . --output-format=json > ruff-report.json || true'
@@ -167,7 +177,7 @@ PY
           
           echo '8. Unit Testing with Coverage'
           sh '''
-            PYTHONPATH=. pytest tests/ \
+            python3 -m pytest tests/ \
               --junitxml=test-results.xml \
               --cov=. \
               --cov-report=xml:coverage.xml \
@@ -232,11 +242,11 @@ PY
             sudo apt-get install -y trivy
           fi
           
-          # Scan images and generate reports
-          sudo trivy image --format json --output trivy-backend-report.json ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
-          sudo trivy image --format table --output trivy-backend-report.txt ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
-          sudo trivy image --format json --output trivy-frontend-report.json ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
-          sudo trivy image --format table --output trivy-frontend-report.txt ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
+          # Scan images and generate reports (trivy in sudoers, no password needed)
+          trivy image --format json --output trivy-backend-report.json ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
+          trivy image --format table --output trivy-backend-report.txt ${BACKEND_IMAGE}:${BUILD_NUMBER} || true
+          trivy image --format json --output trivy-frontend-report.json ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
+          trivy image --format table --output trivy-frontend-report.txt ${FRONTEND_IMAGE}:${BUILD_NUMBER} || true
         '''
         
         // Publish ALL Reports
@@ -244,8 +254,7 @@ PY
         junit allowEmptyResults: true, testResults: 'src/backend/test-results.xml'
         
         echo '=== Publishing Code Coverage ==='
-        publishCoverage adapters: [coberturaAdapter('src/backend/coverage.xml')], 
-                        sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
+        recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'src/backend/coverage.xml']])
         
         echo '=== Publishing HTML Reports ==='
         
