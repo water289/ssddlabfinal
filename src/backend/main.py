@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from prometheus_client import Counter as PromCounter
 from prometheus_client import Histogram, make_asgi_app
 from sqlalchemy import text
@@ -142,6 +142,7 @@ class TokenResponse(BaseModel):
 
 
 class ElectionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     title: str
     is_active: bool
@@ -154,11 +155,13 @@ class ResultOut(BaseModel):
 
 
 class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     username: str
     role: str
 
 
 class VoteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     election_id: int
     choice: str
     created_at: datetime
