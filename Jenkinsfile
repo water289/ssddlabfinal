@@ -112,15 +112,13 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Completely uninstall pydantic and clear ALL files including .so before installing checkov
-            sudo pip3 uninstall -y pydantic pydantic-core pydantic-settings || true
-            sudo find /usr/local/lib/python3.12/dist-packages -name 'pydantic*' -delete || true
+            # Install checkov (pydantic v2 compatible)
             sudo pip3 cache purge || true
             sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-cache-dir
           '''
         }
         
-        // Infrastructure as Code Scanning (run BEFORE backend testing to avoid pydantic conflicts)
+        // Infrastructure as Code Scanning
         echo '1. IaC Security Scanning with Checkov'
         sh '''
           if [ -d "iac/terraform" ]; then
@@ -141,13 +139,11 @@ PY
           checkov -f src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
         '''
         
-        // Backend Security Testing (uninstall pydantic 2.x before installing 1.x)
+        // Backend Security Testing (use pydantic v2 with FastAPI 0.100+)
         dir('src/backend') {
           sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
           sh '''
-            # Completely remove pydantic 2.x and install backend deps with pydantic 1.x
-            sudo pip3 uninstall -y pydantic pydantic-core || true
-            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic /usr/local/lib/python3.12/dist-packages/pydantic-* /usr/local/lib/python3.12/dist-packages/pydantic_* || true
+            # Install backend dependencies (FastAPI 0.100+ is compatible with pydantic v2)
             sudo pip3 cache purge || true
             sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages --no-cache-dir
           '''
