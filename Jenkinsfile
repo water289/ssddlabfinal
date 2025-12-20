@@ -112,8 +112,8 @@ PY
               export PATH="$PWD/dependency-check/bin:$PATH"
             fi
             
-            # Install Checkov for IaC scanning (sudo for externally-managed env)
-            sudo pip3 install checkov --break-system-packages || true
+            # Install Checkov for IaC scanning (ignore Debian typing-extensions conflict)
+            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions || true
           '''
         }
         
