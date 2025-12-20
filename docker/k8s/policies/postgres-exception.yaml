@@ -9,12 +9,18 @@ spec:
     - resources:
         kinds:
         - StatefulSet
+        - Pod
         names:
-        - voting-system-postgres
+        - voting-system-postgres*
+        namespaces:
+        - voting-system
   exceptions:
   - policyName: disallow-privileged
     ruleNames:
     - '*'
   - policyName: require-non-root
+    ruleNames:
+    - '*'
+  - policyName: require-resource-limits
     ruleNames:
     - '*'
