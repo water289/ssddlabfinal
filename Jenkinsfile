@@ -88,16 +88,20 @@ pipeline {
           sh '''
             # Install SonarQube Scanner if needed (no sudo required)
             if ! command -v sonar-scanner >/dev/null 2>&1; then
+              echo "Installing SonarQube Scanner..."
               wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip -O sonar-scanner.zip
               python3 - <<'PY'
 import zipfile
 zipfile.ZipFile('sonar-scanner.zip').extractall()
 PY
               export PATH="$PWD/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
+            else
+              echo "SonarQube Scanner already installed, skipping..."
             fi
             
             # Install OWASP Dependency-Check (non-interactive extract)
             if ! command -v dependency-check >/dev/null 2>&1; then
+              echo "Installing OWASP Dependency-Check..."
               wget -q https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip -O dependency-check.zip
               python3 - <<'PY'
 import os, shutil, zipfile
@@ -110,11 +114,17 @@ with zipfile.ZipFile(archive) as zf:
 PY
               chmod +x dependency-check/bin/dependency-check.sh || true
               export PATH="$PWD/dependency-check/bin:$PATH"
+            else
+              echo "OWASP Dependency-Check already installed, skipping..."
             fi
             
-            # Install checkov (pydantic v2 compatible)
-            sudo pip3 cache purge || true
-            sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-cache-dir
+            # Install checkov only if not present
+            if ! command -v checkov >/dev/null 2>&1; then
+              echo "Installing Checkov..."
+              sudo pip3 install checkov --break-system-packages --ignore-installed typing-extensions --no-cache-dir
+            else
+              echo "Checkov already installed, skipping..."
+            fi
           '''
         }
         
@@ -141,11 +151,19 @@ PY
         
         // Backend Security Testing (use pydantic v2 with FastAPI 0.100+)
         dir('src/backend') {
-          sh 'sudo python3 -m pip install --upgrade pip --break-system-packages || true'
           sh '''
-            # Install backend dependencies (FastAPI 0.100+ is compatible with pydantic v2)
-            sudo pip3 cache purge || true
-            sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages --no-cache-dir
+            # Upgrade pip only if needed
+            pip_version=$(python3 -m pip --version | awk '{print $2}')
+            if [ "$(printf '%s\n' "23.0" "$pip_version" | sort -V | head -n1)" != "23.0" ]; then
+              echo "Upgrading pip..."
+              sudo python3 -m pip install --upgrade pip --break-system-packages
+            else
+              echo "Pip is up to date, skipping upgrade..."
+            fi
+            
+            # Install backend dependencies only if not already installed
+            echo "Checking and installing backend dependencies..."
+            sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages --no-cache-dir --quiet
           '''
           
           echo '4. Static Code Analysis with Ruff'
@@ -185,7 +203,15 @@ PY
           
           echo '9. SonarQube Analysis (if configured)'
           sh '''
-            if [ -f "sonar-project.properties" ]; then
+            if''
+            # Use npm ci only if node_modules doesn't exist or package-lock changed
+            if [ ! -d "node_modules" ] || [ package-lock.json -nt node_modules ]; then
+              echo "Installing frontend dependencies..."
+              npm ci
+            else
+              echo "Frontend dependencies already installed, skipping..."
+            fi
+          ''"sonar-project.properties" ]; then
               sonar-scanner -Dsonar.projectKey=secure-voting-backend || echo "SonarQube scan skipped"
             fi
           '''
@@ -220,13 +246,16 @@ PY
         echo '=== PHASE 4B: Build Docker Images & Publish All Reports ==='
         
         // Build Docker Images
-        echo 'Building Docker Images'
-        sh 'sudo docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} src/backend'
-        sh 'sudo docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} src/frontend'
-        
-        // Container Image Scanning with Trivy
-        echo 'Scanning Docker images with Trivy'
-        sh '''
+        echoecho "Installing Trivy..."
+            # Install trivy via apt without manual key management
+            sudo apt-get update -qq
+            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo tee /etc/apt/trusted.gpg.d/trivy.asc
+            echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+            sudo apt-get update -qq
+            sudo apt-get install -y trivy
+          else
+            echo "Trivy already installed, skipping..."
           if ! command -v trivy >/dev/null 2>&1; then
             # Install trivy via apt without manual key management
             sudo apt-get update
@@ -393,9 +422,12 @@ PY
           sh '''
             # Install OWASP ZAP if not present
             if ! command -v zap.sh >/dev/null 2>&1; then
+              echo "Installing OWASP ZAP..."
               wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz
               tar -xzf ZAP_2.14.0_Linux.tar.gz
               export PATH="$PWD/ZAP_2.14.0:$PATH"
+            else
+              echo "OWASP ZAP already installed, skipping..."
             fi
             
             # Wait for application to be ready
@@ -508,9 +540,14 @@ PY
         echo '=== PHASE 7: Application Deployment ==='
         echo 'Deploying to Kubernetes using Helm chart for secure-voting'
         sh '''
+          # Install Helm only if not present
           if ! command -v helm >/dev/null 2>&1; then
+            echo "Installing Helm..."
             curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          else
+            echo "Helm already installed, skipping..."
           fi
+          
           kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
           
           # Deploy using Helm with secrets from Secrets Manager or Jenkins credentials
@@ -545,16 +582,24 @@ PY
       steps {
         echo '=== PHASE 8: Monitoring Stack Deployment ==='
         sh '''
+          # Helm is already checked in previous stage
           if ! command -v helm >/dev/null 2>&1; then
+            echo "Installing Helm..."
             curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          else
+            echo "Helm already installed, skipping..."
           fi
           
           # Create monitoring namespace
           kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
           
-          # Install kube-prometheus-stack
-          echo "Installing Prometheus/Grafana stack..."
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          # Add Prometheus repo only if not already added
+          if ! helm repo list | grep -q prometheus-community; then
+            echo "Adding Prometheus Helm repository..."
+            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          else
+            echo "Prometheus repository already added, skipping..."
+          fi
           helm repo update
           
           helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
@@ -566,7 +611,14 @@ PY
           
           # Install Loki
           echo "Installing Loki..."
-          helm repo add grafana https://grafana.github.io/helm-charts
+          if ! helm repo list | grep -q "grafana"; then
+            echo "Adding Grafana Helm repository..."
+            helm repo add grafana https://grafana.github.io/helm-charts
+          else
+            echo "Grafana repository already added, skipping..."
+          fi
+          helm repo update
+          
           helm upgrade --install loki grafana/loki-stack \
             --namespace monitoring \
             --values monitor/loki/values.yaml \
@@ -574,7 +626,14 @@ PY
           
           # Install Falco
           echo "Installing Falco..."
-          helm repo add falcosecurity https://falcosecurity.github.io/charts
+          if ! helm repo list | grep -q "falcosecurity"; then
+            echo "Adding Falco Helm repository..."
+            helm repo add falcosecurity https://falcosecurity.github.io/charts
+          else
+            echo "Falco repository already added, skipping..."
+          fi
+          helm repo update
+          
           helm upgrade --install falco falcosecurity/falco \
             --namespace monitoring \
             --values monitor/falco/values.yaml \
