@@ -7,3 +7,12 @@ spec:
     kinds:
       - apiGroups: [""]
         kinds: ["Pod"]
+    excludedNamespaces:  # ⬅️ ADD THIS
+      - kube-system
+      - gatekeeper-system
+      - kyverno
+    namespaceSelector:
+      matchExpressions:
+        - key: name
+          operator: NotIn
+          values: ["voting-system"]  # Exclude voting-system for postgres
