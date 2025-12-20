@@ -26,31 +26,31 @@ pipeline {
         echo '=== PHASE 1: Security Hardening ==='
         script {
           // Make scripts executable
-          sh 'chmod +x ssddlabfinal/scripts/*.sh'
+          sh 'chmod +x scripts/*.sh'
           
           // 1. SSH Hardening (key-only authentication)
           echo 'Step 1/6: Hardening SSH configuration...'
-          sh './ssddlabfinal/scripts/harden-ssh.sh || echo "SSH hardening completed or already configured"'
+          sh './scripts/harden-ssh.sh || echo "SSH hardening completed or already configured"'
           
           // 2. UFW Firewall Setup
           echo 'Step 2/6: Configuring UFW firewall...'
-          sh './ssddlabfinal/scripts/setup-firewall.sh || echo "Firewall already configured"'
+          sh './scripts/setup-firewall.sh || echo "Firewall already configured"'
           
           // 3. Fail2Ban Setup
           echo 'Step 3/6: Installing Fail2Ban...'
-          sh './ssddlabfinal/scripts/setup-fail2ban.sh || echo "Fail2Ban already configured"'
+          sh './scripts/setup-fail2ban.sh || echo "Fail2Ban already configured"'
           
           // 4. Automatic Security Updates
           echo 'Step 4/6: Configuring automatic security updates...'
-          sh './ssddlabfinal/scripts/setup-auto-updates.sh || echo "Auto-updates already configured"'
+          sh './scripts/setup-auto-updates.sh || echo "Auto-updates already configured"'
           
           // 5. CloudWatch Logs Agent
           echo 'Step 5/6: Installing CloudWatch agent...'
-          sh './ssddlabfinal/scripts/setup-cloudwatch.sh || echo "CloudWatch already configured"'
+          sh './scripts/setup-cloudwatch.sh || echo "CloudWatch already configured"'
           
           // 6. Verify Security Configuration
           echo 'Step 6/6: Verifying security configuration...'
-          sh './ssddlabfinal/scripts/verify-security.sh || echo "Some security checks failed - review logs"'
+          sh './scripts/verify-security.sh || echo "Some security checks failed - review logs"'
         }
       }
     }
@@ -61,8 +61,8 @@ pipeline {
         echo '=== PHASE 2: Secrets Management ==='
         script {
           sh '''
-            chmod +x ssddlabfinal/scripts/setup-secrets-manager.sh
-            ./ssddlabfinal/scripts/setup-secrets-manager.sh || {
+            chmod +x scripts/setup-secrets-manager.sh
+            ./scripts/setup-secrets-manager.sh || {
               echo "WARNING: Secrets Manager retrieval failed. Using Jenkins credentials as fallback."
               exit 0
             }
@@ -105,7 +105,7 @@ pipeline {
         }
         
         // Backend Security Testing
-        dir('ssddlabfinal/src/backend') {
+        dir('src/backend') {
           sh 'python3 -m pip install --upgrade pip'
           sh 'pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety'
           
@@ -153,7 +153,7 @@ pipeline {
         }
         
         // Frontend Security Testing
-        dir('ssddlabfinal/src/frontend') {
+        dir('src/frontend') {
           sh 'npm ci'
           
           echo '7. NPM Audit for Frontend Dependencies'
@@ -177,22 +177,22 @@ pipeline {
         // Infrastructure as Code Scanning
         echo '10. IaC Security Scanning with Checkov'
         sh '''
-          if [ -d "ssddlabfinal/iac/terraform" ]; then
-            checkov -d ssddlabfinal/iac/terraform --output json > checkov-iac-report.json || true
-            checkov -d ssddlabfinal/iac/terraform --output cli > checkov-iac-report.txt || true
+          if [ -d "iac/terraform" ]; then
+            checkov -d iac/terraform --output json > checkov-iac-report.json || true
+            checkov -d iac/terraform --output cli > checkov-iac-report.txt || true
           fi
         '''
         
         echo '11. Kubernetes YAML Scanning'
         sh '''
-          checkov -d ssddlabfinal/docker/k8s --output json > checkov-k8s-report.json || true
-          checkov -d ssddlabfinal/docker/k8s --output cli > checkov-k8s-report.txt || true
+          checkov -d docker/k8s --output json > checkov-k8s-report.json || true
+          checkov -d docker/k8s --output cli > checkov-k8s-report.txt || true
         '''
         
         echo '12. Dockerfile Scanning with Checkov'
         sh '''
-          checkov -f ssddlabfinal/src/backend/Dockerfile --output json > checkov-backend-dockerfile.json || true
-          checkov -f ssddlabfinal/src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
+          checkov -f src/backend/Dockerfile --output json > checkov-backend-dockerfile.json || true
+          checkov -f src/frontend/Dockerfile --output json > checkov-frontend-dockerfile.json || true
         '''
       }
     }
@@ -203,8 +203,8 @@ pipeline {
         
         // Build Docker Images
         echo 'Building Docker Images'
-        sh 'docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} ssddlabfinal/src/backend'
-        sh 'docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} ssddlabfinal/src/frontend'
+        sh 'docker build -t ${BACKEND_IMAGE}:latest -t ${BACKEND_IMAGE}:${BUILD_NUMBER} src/backend'
+        sh 'docker build -t ${FRONTEND_IMAGE}:latest -t ${FRONTEND_IMAGE}:${BUILD_NUMBER} src/frontend'
         
         // Container Image Scanning with Trivy
         echo 'Scanning Docker images with Trivy'
@@ -224,10 +224,10 @@ pipeline {
         
         // Publish ALL Reports
         echo '=== Publishing Test Results ==='
-        junit allowEmptyResults: true, testResults: 'ssddlabfinal/src/backend/test-results.xml'
+        junit allowEmptyResults: true, testResults: 'src/backend/test-results.xml'
         
         echo '=== Publishing Code Coverage ==='
-        publishCoverage adapters: [coberturaAdapter('ssddlabfinal/src/backend/coverage.xml')], 
+        publishCoverage adapters: [coberturaAdapter('src/backend/coverage.xml')], 
                         sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
         
         echo '=== Publishing HTML Reports ==='
@@ -237,7 +237,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/backend/htmlcov',
+          reportDir: 'src/backend/htmlcov',
           reportFiles: 'index.html',
           reportName: '1. Code Coverage Report',
           reportTitles: 'Python Coverage'
@@ -248,7 +248,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/backend',
+          reportDir: 'src/backend',
           reportFiles: 'pytest-report.html',
           reportName: '2. PyTest Report',
           reportTitles: 'Unit Test Results'
@@ -259,7 +259,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/backend',
+          reportDir: 'src/backend',
           reportFiles: 'bandit-report.html',
           reportName: '3. Bandit Security Scan (SAST)',
           reportTitles: 'Python Security Issues'
@@ -270,7 +270,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/backend',
+          reportDir: 'src/backend',
           reportFiles: 'ruff-report.html',
           reportName: '4. Ruff Code Quality',
           reportTitles: 'Python Linting'
@@ -281,7 +281,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/frontend',
+          reportDir: 'src/frontend',
           reportFiles: 'eslint-report.html',
           reportName: '5. ESLint Frontend Report',
           reportTitles: 'JavaScript/React Linting'
@@ -334,7 +334,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/backend',
+          reportDir: 'src/backend',
           reportFiles: 'safety-report.txt',
           reportName: '10. Safety Python Dependencies',
           reportTitles: 'Python Dependency Vulnerabilities'
@@ -344,7 +344,7 @@ pipeline {
           allowMissing: true,
           alwaysLinkToLastBuild: true,
           keepAll: true,
-          reportDir: 'ssddlabfinal/src/frontend',
+          reportDir: 'src/frontend',
           reportFiles: 'npm-audit-report.txt',
           reportName: '11. NPM Audit Report',
           reportTitles: 'NPM Dependency Vulnerabilities'
@@ -355,7 +355,7 @@ pipeline {
         // Record all static analysis issues
         recordIssues(
           enabledForFailure: true,
-          tool: pyLint(pattern: 'ssddlabfinal/src/backend/ruff-report.json', name: 'Ruff'),
+          tool: pyLint(pattern: 'src/backend/ruff-report.json', name: 'Ruff'),
           qualityGates: [[threshold: 50, type: 'TOTAL', unstable: true]]
         )
         
@@ -446,9 +446,9 @@ pipeline {
           // Apply Kyverno policies
           echo 'Applying Kyverno policies...'
           sh '''
-            kubectl apply -f ssddlabfinal/docker/k8s/policies/require-non-root.yaml
-            kubectl apply -f ssddlabfinal/docker/k8s/policies/disallow-privileged.yaml
-            kubectl apply -f ssddlabfinal/docker/k8s/policies/require-resource-limits.yaml
+            kubectl apply -f docker/k8s/policies/require-non-root.yaml
+            kubectl apply -f docker/k8s/policies/disallow-privileged.yaml
+            kubectl apply -f docker/k8s/policies/require-resource-limits.yaml
             echo "✓ Kyverno policies applied"
           '''
           
@@ -468,9 +468,9 @@ pipeline {
           echo 'Applying Gatekeeper policies...'
           sh '''
             sleep 10
-            kubectl apply -f ssddlabfinal/docker/k8s/policies/gatekeeper/templates/
+            kubectl apply -f docker/k8s/policies/gatekeeper/templates/
             sleep 5
-            kubectl apply -f ssddlabfinal/docker/k8s/policies/gatekeeper/constraints/
+            kubectl apply -f docker/k8s/policies/gatekeeper/constraints/
             echo "✓ Gatekeeper policies applied"
           '''
         }
@@ -493,7 +493,7 @@ pipeline {
           kubectl create namespace ${K8S_NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
           
           # Deploy using Helm with secrets from Secrets Manager or Jenkins credentials
-          helm upgrade --install voting ./ssddlabfinal/docker/helm/voting-system \
+          helm upgrade --install voting ./docker/helm/voting-system \
             --namespace ${K8S_NAMESPACE} \
             --set backend.image.repository=${BACKEND_IMAGE} \
             --set backend.image.tag=${BUILD_NUMBER} \
@@ -538,7 +538,7 @@ pipeline {
           
           helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
             --namespace monitoring \
-            --values ssddlabfinal/monitor/prometheus/values.yaml \
+            --values monitor/prometheus/values.yaml \
             --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
             --set grafana.adminPassword=admin \
             --wait --timeout=5m || echo "Prometheus stack installed with warnings"
@@ -548,7 +548,7 @@ pipeline {
           helm repo add grafana https://grafana.github.io/helm-charts
           helm upgrade --install loki grafana/loki-stack \
             --namespace monitoring \
-            --values ssddlabfinal/monitor/loki/values.yaml \
+            --values monitor/loki/values.yaml \
             --wait --timeout=3m || echo "Loki installed with warnings"
           
           # Install Falco
@@ -556,17 +556,17 @@ pipeline {
           helm repo add falcosecurity https://falcosecurity.github.io/charts
           helm upgrade --install falco falcosecurity/falco \
             --namespace monitoring \
-            --values ssddlabfinal/monitor/falco/values.yaml \
+            --values monitor/falco/values.yaml \
             --wait --timeout=3m || echo "Falco installed with warnings"
           
           # Apply Prometheus alert rules
           echo "Applying alert rules..."
-          kubectl apply -f ssddlabfinal/monitor/prometheus/alerts.yaml -n monitoring || true
+          kubectl apply -f monitor/prometheus/alerts.yaml -n monitoring || true
           
           # Apply Alertmanager configuration
           echo "Configuring Alertmanager..."
           kubectl create configmap alertmanager-config \
-            --from-file=ssddlabfinal/monitor/alertmanager/config.yaml \
+            --from-file=monitor/alertmanager/config.yaml \
             -n monitoring \
             --dry-run=client -o yaml | kubectl apply -f - || true
           
