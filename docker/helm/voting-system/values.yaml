@@ -62,15 +62,27 @@ postgres:
     limits:
       cpu: 500m
       memory: 1Gi
-  securityContext:
+  containerSecurityContext:
+    enabled: true
     runAsNonRoot: true
-    runAsUser: 999
+    runAsUser: 1001
+    runAsGroup: 1001
     allowPrivilegeEscalation: false
+    privileged: false
     readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
   podSecurityContext:
-    fsGroup: 999
+    enabled: true
+    fsGroup: 1001
     runAsNonRoot: true
-    runAsUser: 999
+    runAsUser: 1001
+  volumePermissions:
+    enabled: true
+    securityContext:
+      runAsUser: 0
 
 service:
   type: ClusterIP
+
