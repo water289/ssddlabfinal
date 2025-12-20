@@ -400,7 +400,7 @@ PY
             
             # Wait for application to be ready
             echo "Waiting for backend to be ready..."
-            kubectl wait --for=condition=ready pod -l app=backend -n ${K8S_NAMESPACE} --timeout=300s || true
+            kubectl wait --for=condition=ready pod -l app=backend -n ${K8S_NAMESPACE} --timeout=120s || true
             
             # Port forward backend for ZAP scanning
             kubectl port-forward -n ${K8S_NAMESPACE} svc/backend 8000:8000 &
@@ -457,7 +457,7 @@ PY
               helm install kyverno kyverno/kyverno --namespace kyverno --create-namespace \
                 --set replicaCount=1 \
                 --set resources.limits.memory=256Mi
-              kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kyverno -n kyverno --timeout=300s
+              kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kyverno -n kyverno --timeout=120s
               echo "✓ Kyverno installed"
             else
               echo "✓ Kyverno already installed"
@@ -478,7 +478,7 @@ PY
           sh '''
             if ! kubectl get ns gatekeeper-system >/dev/null 2>&1; then
               kubectl apply -f https://raw.githubusercontent.com/open-policy-agent/gatekeeper/release-3.14/deploy/gatekeeper.yaml
-              kubectl wait --for=condition=ready pod -l control-plane=controller-manager -n gatekeeper-system --timeout=300s
+              kubectl wait --for=condition=ready pod -l control-plane=controller-manager -n gatekeeper-system --timeout=120s
               echo "✓ Gatekeeper installed"
             else
               echo "✓ Gatekeeper already installed"
@@ -522,12 +522,12 @@ PY
             --set frontend.image.tag=${BUILD_NUMBER} \
             --set global.database.password=${POSTGRES_PASSWORD} \
             --set global.secretKey=${SECRET_KEY} \
-            --wait --timeout=5m
+            --wait --timeout=120s
           
           echo "Waiting for deployments to be ready..."
-          kubectl rollout status deploy/voting-backend -n ${K8S_NAMESPACE} --timeout=300s || true
-          kubectl rollout status deploy/voting-frontend -n ${K8S_NAMESPACE} --timeout=300s || true
-          kubectl rollout status statefulset/postgres -n ${K8S_NAMESPACE} --timeout=300s || true
+          kubectl rollout status deploy/voting-backend -n ${K8S_NAMESPACE} --timeout=120s || true
+          kubectl rollout status deploy/voting-frontend -n ${K8S_NAMESPACE} --timeout=120s || true
+          kubectl rollout status statefulset/postgres -n ${K8S_NAMESPACE} --timeout=120s || true
           
           echo "Deployment Status:"
           kubectl get pods -n ${K8S_NAMESPACE}
@@ -562,7 +562,7 @@ PY
             --values monitor/prometheus/values.yaml \
             --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
             --set grafana.adminPassword=admin \
-            --wait --timeout=5m || echo "Prometheus stack installed with warnings"
+            --wait --timeout=120s || echo "Prometheus stack installed with warnings"
           
           # Install Loki
           echo "Installing Loki..."
@@ -570,7 +570,7 @@ PY
           helm upgrade --install loki grafana/loki-stack \
             --namespace monitoring \
             --values monitor/loki/values.yaml \
-            --wait --timeout=3m || echo "Loki installed with warnings"
+            --wait --timeout=120s || echo "Loki installed with warnings"
           
           # Install Falco
           echo "Installing Falco..."
@@ -578,7 +578,7 @@ PY
           helm upgrade --install falco falcosecurity/falco \
             --namespace monitoring \
             --values monitor/falco/values.yaml \
-            --wait --timeout=3m || echo "Falco installed with warnings"
+            --wait --timeout=120s || echo "Falco installed with warnings"
           
           # Apply Prometheus alert rules
           echo "Applying alert rules..."
@@ -611,11 +611,11 @@ PY
           pkill -f "kubectl port-forward.*prometheus" || true
 
           # Wait for pods to be ready
-          kubectl wait --for=condition=ready pod -l app=voting,component=backend -n ${K8S_NAMESPACE} --timeout=300s || true
-          kubectl wait --for=condition=ready pod -l app=voting,component=frontend -n ${K8S_NAMESPACE} --timeout=300s || true
+          kubectl wait --for=condition=ready pod -l app=voting,component=backend -n ${K8S_NAMESPACE} --timeout=120s || true
+          kubectl wait --for=condition=ready pod -l app=voting,component=frontend -n ${K8S_NAMESPACE} --timeout=120s || true
           
           if [ "${INSTALL_MONITORING}" == "true" ]; then
-            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n monitoring --timeout=300s || true
+            kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=grafana -n monitoring --timeout=120ss || true
           fi
 
           # Prevent Jenkins from killing background processes
