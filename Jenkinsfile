@@ -14,7 +14,7 @@ pipeline {
   parameters {
     booleanParam(name: 'DEPLOY_TO_K8S', defaultValue: false, description: 'Deploy to Kubernetes after build')
     booleanParam(name: 'INSTALL_MONITORING', defaultValue: false, description: 'Install kube-prometheus-stack when deploying')
-    booleanParam(name: 'SETUP_SECURITY', defaultValue: true, description: 'Run security hardening scripts (first-time setup)')
+    booleanParam(name: 'SETUP_SECURITY', defaultValue: false, description: 'Run security hardening scripts (first-time setup)')
     booleanParam(name: 'USE_SECRETS_MANAGER', defaultValue: true, description: 'Retrieve secrets from AWS Secrets Manager')
     booleanParam(name: 'INSTALL_POLICIES', defaultValue: false, description: 'Install Kyverno and OPA Gatekeeper policies')
   }
@@ -86,10 +86,13 @@ pipeline {
         script {
           // Install testing tools if not present
           sh '''
-            # Install SonarQube Scanner if needed
+            # Install SonarQube Scanner if needed (no sudo required)
             if ! command -v sonar-scanner >/dev/null 2>&1; then
-              wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-              unzip -q sonar-scanner-cli-4.8.0.2856-linux.zip
+              wget -q https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip -O sonar-scanner.zip
+              python3 - <<'PY'
+import zipfile
+zipfile.ZipFile('sonar-scanner.zip').extractall()
+PY
               export PATH="$PWD/sonar-scanner-4.8.0.2856-linux/bin:$PATH"
             fi
             
