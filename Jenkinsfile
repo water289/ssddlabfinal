@@ -147,7 +147,7 @@ PY
           sh '''
             # Completely remove pydantic 2.x and install backend deps with pydantic 1.x
             sudo pip3 uninstall -y pydantic pydantic-core || true
-            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic* || true
+            sudo rm -rf /usr/local/lib/python3.12/dist-packages/pydantic /usr/local/lib/python3.12/dist-packages/pydantic-* /usr/local/lib/python3.12/dist-packages/pydantic_* || true
             sudo pip3 cache purge || true
             sudo pip3 install -r requirements.txt bandit pytest pytest-cov pytest-html safety ruff httpx --break-system-packages --no-cache-dir
           '''
